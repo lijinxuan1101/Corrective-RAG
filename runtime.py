@@ -26,10 +26,24 @@ def ensure_environment() -> None:
     env_file = os.getenv("ENV_FILE_PATH", str(DEFAULT_ENV_PATH))
     env_path = Path(env_file)
 
-    if not env_path.exists():
-        raise EnvironmentError(f".env 文件不存在，请在 {env_path} 创建或通过 ENV_FILE_PATH 指定路径。")
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+    else:
+        # 若找不到 .env，则尝试从运行环境（例如 Streamlit secrets）中注入
+        injected_from_secrets = False
+        try:
+            import streamlit as st  # type: ignore
 
-    load_dotenv(dotenv_path=env_path)
+            if st.secrets:
+                for key, value in st.secrets.items():
+                    os.environ.setdefault(key, str(value))
+                injected_from_secrets = True
+        except ModuleNotFoundError:
+            # 非 Streamlit 场景，忽略
+            pass
+
+        if not injected_from_secrets:
+            print(f"⚠️ 未找到 .env 文件 {env_path}，将直接使用已有的环境变量。")
 
     missing = []
     for key in ("OPENAI_API_KEY", "TAVILY_API_KEY"):
