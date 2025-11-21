@@ -28,7 +28,7 @@ retrieval_grader = grade_prompt | structured_llm_grader
 # --- 2. 最终生成器 (Generator) ---
 prompt = ChatPromptTemplate.from_messages(
     [
-        ("system", "你是一个乐于助人的 AI 助手。请根据提供的上下文回答用户的问题。如果你不知道答案，就说不知道。"),
+        ("system", "你是一个关于企业年报分析的专业AI助手。请根据提供的上下文回答用户的问题。要结合数据库中的信息回答问题，尤其是涉及到企业数据，要确保数据的准确性，不可以编造数据。如果你不知道答案，就说不知道。"),
         ("human", "上下文: {context} \n\n 问题: {question}"),
     ]
 )

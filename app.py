@@ -21,6 +21,20 @@ st.set_page_config(page_title="CRAG 智能助手", page_icon="🤖")
 st.title("🤖 Corrective RAG (CRAG) 智能助手")
 st.caption("🚀 基于 LangGraph 的自适应检索增强生成系统 (已支持多轮对话)")
 
+with st.expander("💡 建议提问", expanded=True):
+    cols = st.columns(3)
+    suggestions = [
+        "五粮液24年经营状况如何？",
+        "五粮液24年相比于23年经营状况如何？",
+        "基于24年五粮液的财报，提出对于五粮液未来发展的规划建议？"
+    ]
+    for idx, question in enumerate(suggestions):
+        if cols[idx % 3].button(question, key=f"suggest_{idx}"):
+            st.session_state.setdefault("messages", [])
+            st.session_state["messages"].append({"role": "user", "content": question})
+            st.session_state["pending_prompt"] = question
+            st.rerun()
+
 
 # 初始化向量库（显示在状态栏中）
 if 'vector_store_initialized' not in st.session_state:
@@ -48,7 +62,10 @@ for msg in st.session_state.messages:
 
 # --- 3. 处理用户输入和 Agent 执行 ---
 
-if prompt := st.chat_input("向你的知识库提问..."):
+pending_prompt = st.session_state.pop("pending_prompt", None)
+prompt = pending_prompt or st.chat_input("向你的知识库提问...")
+
+if prompt:
     # 1. 保存和显示用户输入
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
