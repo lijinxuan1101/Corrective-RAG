@@ -11,3 +11,5 @@ streamlit
 pypdf
 chromadb
 filelock
+fastapi
+uvicorn

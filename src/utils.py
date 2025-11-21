@@ -1,4 +1,5 @@
 import os
+import shutil
 # ⚠️ 关键修改：引入 DirectoryLoader
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -10,11 +11,22 @@ VECTOR_STORE = None
 PERSIST_DIR = "./chroma_db"
 
 # 核心修改：函数接收一个目录路径 data_dir，默认值为 'data'
-def initialize_vector_store(data_dir: str = "data"):
+def initialize_vector_store(data_dir: str = "data", force_rebuild: bool = False):
     """
     加载指定目录及其子目录下的所有 PDF 文件，切割，嵌入，并初始化 ChromaDB 向量库。
     """
     global VECTOR_STORE
+    
+    # --- 0. 根据需要选择是否强制重建向量库 ---
+    if force_rebuild and os.path.exists(PERSIST_DIR):
+        print("♻️ 检测到 force_rebuild=True，正在删除现有向量库以重新构建...")
+        try:
+            shutil.rmtree(PERSIST_DIR)
+            VECTOR_STORE = None
+            print("✅ 旧向量库已删除，将重新创建。")
+        except Exception as e:
+            print(f"❌ 删除旧向量库失败: {e}")
+            return None
     
     # --- 1. 检查并加载已存在的向量库 ---
     if os.path.exists(PERSIST_DIR) and VECTOR_STORE is None:

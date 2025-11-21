@@ -1,15 +1,18 @@
 import streamlit as st
-import os
 import warnings
-from dotenv import load_dotenv
-from src.graph import app as graph_app
-from src.utils import initialize_vector_store
+
+from runtime import ensure_environment, ensure_vector_store
+
+try:
+    ensure_environment()
+except EnvironmentError as exc:
+    st.error(f"❌ 环境初始化失败: {exc}")
+    st.stop()
+
+from src.graph import app as graph_app  # noqa: E402
 
 # 忽略所有 DeprecationWarning，保持控制台清洁
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
-
-# 加载环境变量
-load_dotenv()
 
 # --- 1. 页面初始化和配置 ---
 
@@ -18,21 +21,17 @@ st.set_page_config(page_title="CRAG 智能助手", page_icon="🤖")
 st.title("🤖 Corrective RAG (CRAG) 智能助手")
 st.caption("🚀 基于 LangGraph 的自适应检索增强生成系统 (已支持多轮对话)")
 
-# 检查 API KEY 是否存在
-if not os.getenv("OPENAI_API_KEY") or not os.getenv("TAVILY_API_KEY"):
-    st.error("❌ 错误：请在 .env 文件中配置 OPENAI_API_KEY 和 TAVILY_API_KEY！")
-    st.stop()
-
 
 # 初始化向量库（显示在状态栏中）
 if 'vector_store_initialized' not in st.session_state:
     with st.spinner('正在初始化/加载向量库 (请耐心等待，只需首次运行)...'):
-        # ⚠️ 这里使用 data_dir="data"，函数会递归加载所有 PDF
-        if initialize_vector_store(data_dir="data") is None:
-            st.error("向量库初始化失败，请检查终端日志和 .env 配置！")
-        else:
+        try:
+            ensure_vector_store()
             st.session_state['vector_store_initialized'] = True
             st.success("向量库加载成功！")
+        except RuntimeError as exc:
+            st.error(f"向量库初始化失败: {exc}")
+            st.stop()
 
 
 # 初始化会话状态 (用于存储聊天记录)

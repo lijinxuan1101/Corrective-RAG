@@ -23,3 +23,24 @@ graph TD
     D -- No/Ambiguous --> F[Web Search (Tavily)]
     F --> E
     E --> G[Final Output]
+
+## 🚀 运行方式 (Usage)
+
+1. **命令行模式**
+   ```bash
+   pip install -r requirements.txt
+   python main.py
+   ```
+
+2. **Streamlit Web UI**
+   ```bash
+   streamlit run app.py
+   ```
+
+3. **FastAPI 服务**
+   ```bash
+   uvicorn api_server:app --reload
+   ```
+   启动后访问 `http://localhost:8000/docs` 体验在线接口文档。
+
+> 环境变量 `FORCE_REBUILD_VECTOR_STORE=true` 可用于强制重建向量库；默认情况下系统会复用 `./chroma_db` 中已持久化的向量。
