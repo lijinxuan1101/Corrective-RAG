@@ -16,13 +16,15 @@
 
 ```mermaid
 graph TD
-    A[User Query] --> B[Retrieve Documents]
+    A[User Query] --> R[Rewrite Query]
+    R --> B[Retrieve Documents]
     B --> C[Grade Documents]
     C --> D{Is Relevant?}
     D -- Yes --> E[Generate Answer]
-    D -- No/Ambiguous --> F[Web Search (Tavily)]
+    D -- No --> F["Web Search (Tavily)"]
     F --> E
     E --> G[Final Output]
+```
 
 ## 🚀 运行方式 (Usage)
 
