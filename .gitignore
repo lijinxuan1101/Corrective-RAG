@@ -1,1 +1,12 @@
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+
+# 向量库（可由 data/ 下的 PDF 重新构建）
+chroma_db/
+
+# 环境与系统
+.venv/
+.DS_Store
