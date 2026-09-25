@@ -4,8 +4,15 @@
 __pycache__/
 *.py[cod]
 
-# 向量库（可由 data/ 下的 PDF 重新构建）
+# 年报原文与解析产出（公开资料，按 README 从巨潮资讯网自行下载）
+data/
+
+# 向量库与检索索引（可由 data/ 下的 PDF 重新构建）
 chroma_db/
+index/
+
+# MinerU 解析缓存
+blobs/
 
 # 环境与系统
 .venv/

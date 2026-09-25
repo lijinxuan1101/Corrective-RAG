@@ -1,48 +1,111 @@
-# 🤖 Adaptive CRAG Agent: 基于 LangGraph 的自适应 RAG 问答系统
+# Corrective RAG · 中文年报问答
 
-![Python](https://img.shields.io/badge/Python-3.11-blue)
-![LangGraph](https://img.shields.io/badge/AI-LangGraph-orange)
-![RAG](https://img.shields.io/badge/RAG-Corrective-green)
+对上市公司年报 PDF 做端到端问答，带来源引用，并在检索不可靠时主动纠错。
 
-## 📖 项目简介 (Introduction)
-
-本项目实现了一个基于 **Corrective RAG (CRAG)** 架构的智能问答助手。与传统 RAG 不同，该系统引入了 **"自我评估 (Self-Evaluation)"** 机制：它不仅能检索本地知识库，还能主动评估检索到的文档是否相关。
-
-如果本地文档质量不足，系统会自动触发 **Tavily Web Search** 进行联网搜索，从而显著减少模型幻觉 (Hallucination)，解决 "不知道强行回答" 的问题。
-
-## 🏗️ 系统架构 (Architecture)
-
-本项目采用 **LangGraph** 构建 State Machine (状态机)，流程如下：
-
-```mermaid
-graph TD
-    A[User Query] --> R[Rewrite Query]
-    R --> B[Retrieve Documents]
-    B --> C[Grade Documents]
-    C --> D{Is Relevant?}
-    D -- Yes --> E[Generate Answer]
-    D -- No --> F["Web Search (Tavily)"]
-    F --> E
-    E --> G[Final Output]
+```
+PDF ──► Markdown ──► 切块 ──► 混合索引 ──► CRAG 状态机 ──► 带引用的答案
+     MinerU      doc_parsing   retrieval        rag
 ```
 
-## 🚀 运行方式 (Usage)
+## 📦 四个包
 
-1. **命令行模式**
-   ```bash
-   pip install -r requirements.txt
-   python main.py
-   ```
+| 目录 | 职责 | 文档 |
+|---|---|---|
+| `doc_parsing/` | PDF 转 Markdown、清洗、结构化切块 | [README](doc_parsing/README.md) |
+| `retrieval/` | Qwen3 嵌入 + BM25 混合召回 + 重排 | [README](retrieval/README.md) |
+| `providers/` | 外部 API（百炼嵌入、重排、对话） | [README](providers/README.md) |
+| `rag/` | CRAG 状态机 | [README](rag/README.md) |
 
-2. **Streamlit Web UI**
-   ```bash
-   streamlit run app.py
-   ```
+## 🚀 快速开始
 
-3. **FastAPI 服务**
-   ```bash
-   uvicorn api_server:app --reload
-   ```
-   启动后访问 `http://localhost:8000/docs` 体验在线接口文档。
+### 准备年报 PDF
 
-> 环境变量 `FORCE_REBUILD_VECTOR_STORE=true` 可用于强制重建向量库；默认情况下系统会复用 `./chroma_db` 中已持久化的向量。
+仓库不含年报原文（`data/` 已 gitignore）。从[巨潮资讯网](http://www.cninfo.com.cn/)
+下载后放进 `data/China/`：
+
+```
+data/China/
+├── 五粮液2024年报.pdf
+├── 五粮液2025年报.pdf
+├── 宁德时代2024年报.pdf
+└── 宁德时代2025年报.pdf
+```
+
+**文件名必须是 `公司简称 + 四位年份 + 年报.pdf`**——`company` 和 `year` 元数据由文件名解析，
+检索过滤和范围路由都依赖它。巨潮的原始命名（`贵州茅台2024年年度报告`）不匹配，需要改名。
+
+### 跑通管线
+
+```bash
+pip install -r requirements.txt
+
+# 1. PDF → Markdown（需先装 MinerU，见 doc_parsing/pdf_to_markdown/README.md）
+./doc_parsing/pdf_to_markdown/convert.sh
+
+# 2. 建索引（本地跑，约 12 分钟）
+python retrieval/build_index.py
+
+# 3. 提问
+python main.py "五粮液2024年的营业收入是多少"
+```
+
+密钥放在 `.env`（已 gitignore）：
+
+```
+DASHSCOPE_API_KEY=sk-...
+TAVILY_API_KEY=tvly-...   # 可选，缺失时跳过联网检索
+```
+
+## 🎯 效果
+
+```
+❓ 五粮液2024年的营业收入是多少
+
+五粮液2024年的营业收入为 89,175,178,322.70元 [1]。
+
+📚 依据:
+   [1] 五粮液 2024年报 第7页  · 第二节 公司简介和主要财务指标 > 六、主要会计数据和财务指标
+   [2] 五粮液 2024年报 第116页 · 第十节 财务报告 > 七、合并财务报表项目注释 > 35、营业收入和营业成本
+   [3] 五粮液 2024年报 第61页 · 第十节 财务报告 > 二、财务报表 > 3、合并利润表
+```
+
+多轮追问能正确消解指代：
+
+```
+❓ 宁德时代2025年的研发费用是多少   → 22,146,581千元
+❓ 那2024年的呢？                → 18,606,756千元
+❓ 五粮液同期呢？                 → 405,053,632.27元
+```
+
+问语料里没有的公司不会编造，而且会告诉你收录了什么：
+
+```
+❓ 茅台2024年的营业收入是多少
+抱歉，语料中没有茅台的年报。
+目前收录的是：五粮液 2024/2025年报、宁德时代 2024/2025年报。
+```
+
+## 🧩 设计要点
+
+**切块保留结构。** MinerU 把 2317 个标题全部输出成同一级 `##`，层级信息尽失。
+`doc_parsing` 按中文公文编号（第X节 / 一、/（一）/ 1、）重建六级层级，
+每个块带上章节面包屑、页码、公司、年份。
+
+**嵌入用的文本和给 LLM 的文本分开。** 表格按行线性化成
+`公司 年份 | 项目=值 | 项目=值` 作为嵌入单元，检索命中后返回完整父块——
+1341 个父块展开成 10610 个嵌入单元，LLM 看到的仍是带表头的原始表格。
+
+**稠密和 BM25 缺一不可。** 年报查询既有"应收账款坏账准备"这类术语，
+也有"127,398,915,484.11"这类数字，两者的失效模式恰好互补，用 RRF 融合名次。
+
+**范围路由前置。** 问的公司或年份不在语料内时，答案在查询分析阶段就已经确定，
+直接跳过检索和评分，2.2 秒答复而不是 18.9 秒。
+
+**检索评估器分两级。** 重排分数能干净地滤掉无关查询，
+但判断不了事实可答性——"茅台的营业收入"配五粮液的收入表，本地重排器能给到 0.92。
+所以低分直接拦，其余再过一遍 LLM 核对公司和年份。
+
+## 📊 现状
+
+语料为五粮液、宁德时代的 2024/2025 年报共 749 页，产出 1341 个父块、10610 个嵌入单元。
+正常问答约 20 秒，越界问题 2.2 秒。

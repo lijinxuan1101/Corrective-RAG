@@ -1,37 +1,47 @@
-from runtime import ensure_environment, ensure_vector_store
+#!/usr/bin/env python
+"""
+命令行问答。
 
-try:
-    ensure_environment()
-except EnvironmentError as e:
-    print(f"❌ 环境初始化失败: {e}")
-    exit()
+    python main.py                      # 交互模式
+    python main.py "五粮液2024年营收多少"   # 单次提问
+"""
+import sys
 
-# 在环境变量加载后再导入需要 API key 的模块
-from src.graph import app
+from rag import app, cite
 
-try:
-    ensure_vector_store()
-except RuntimeError as e:
-    print(f"❌ {e}")
-    exit()
+
+def ask(question: str, chat_history: list[str]) -> str:
+    result = app.invoke({"question": question, "chat_history": chat_history})
+
+    print("\n" + "=" * 60)
+    print(result["generation"])
+    sources = cite(result.get("documents", []))
+    if sources:
+        print("\n📚 依据:")
+        print("\n".join(f"   {s}" for s in sources))
+    print("=" * 60 + "\n")
+    return result["generation"]
+
+
+def main():
+    if len(sys.argv) > 1:
+        ask(" ".join(sys.argv[1:]), [])
+        return
+
+    print("🤖 年报问答已启动，输入问题开始，Ctrl-C 退出。\n")
+    history: list[str] = []
+    while True:
+        try:
+            question = input("❓ ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n再见。")
+            return
+        if not question:
+            continue
+        answer = ask(question, history)
+        history.extend([f"用户: {question}", f"助手: {answer}"])
+        history = history[-6:]   # 只留最近三轮，避免重写时被旧话题带偏
+
 
 if __name__ == "__main__":
-    print("🤖 Corrective RAG Agent 已启动...")
-    
-    # 测试问题：问文档中没有的内容，触发 Web Search
-    query = "五粮液24年经营状况如何？"
-    
-    # 测试问题：问文档中的内容
-    # query = "请总结一下文档中的核心观点。"
-
-    inputs = {"question": query}
-    
-    for output in app.stream(inputs):
-        for key, value in output.items():
-            # 这里可以打印中间过程，保持静默，只打印最终结果
-            pass
-            
-    # 确保打印的是最后一个节点的输出
-    final_result = value["generation"] if "generation" in value else "未找到答案"
-    print("\n================ FINAL ANSWER ================")
-    print(final_result)
+    main()

@@ -1,15 +1,25 @@
-langchain
-langchain_core
-langchain_openai
-langchain_community
-langchain_text_splitters
-langgraph
-tavily-python
-pydantic
-python-dotenv
-streamlit
-pypdf
-chromadb
-filelock
-fastapi
-uvicorn
+# 文档解析（PDF → Markdown）
+# mineru[core] 单独安装，体积大且要下模型权重，见 doc_parsing/pdf_to_markdown/README.md
+langchain-text-splitters==1.1.2
+
+# 检索：本地嵌入 + BM25 + 重排
+sentence-transformers==6.1.0
+transformers==5.17.0
+torch==2.13.0
+bm25s==0.3.11
+jieba==0.42.1
+numpy==2.4.6
+
+# 外部 API
+dashscope==1.27.7
+python-dotenv==1.2.3
+requests
+
+# RAG 管线
+langgraph==1.2.12
+langchain-core==1.6.5
+langchain-openai==1.6.6
+pydantic==2.13.5
+
+# 可选：联网检索（需要 TAVILY_API_KEY）
+# langchain-community
