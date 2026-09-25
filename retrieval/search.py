@@ -23,16 +23,19 @@ Reranker = Callable[[str, Sequence[str]], List[float]]
 
 def default_reranker() -> Reranker:
     """
-    优先用百炼的重排 API：20 篇真实父块 1.28s，本地 Qwen3-Reranker 要 3-9s，
-    而且省下 1.2GB 常驻内存。没配 key 时退回本地模型。
+    重排走百炼 API：20 篇真实父块 1.28s，本地 Qwen3-Reranker 要 3-9s，
+    而且省下 1.2GB 常驻内存。
+
+    缺 DASHSCOPE_API_KEY 时**直接报错，不退回本地**——两个模型对无关查询的
+    打分差一个量级，静默切换会让 `rag/nodes.py` 的 IRRELEVANT 阈值失去意义。
+    这里预先探一次 key，让它在构造检索器时就失败，而不是等到 grade 阶段才炸。
+    需要本地重排请显式传入 `HybridRetriever(reranker=...)`。
     """
-    try:
-        from providers.rerank import score
-        return score
-    except Exception as exc:
-        print(f"⚠️ 重排 API 不可用（{type(exc).__name__}），改用本地模型")
-        from retrieval.rerank import score
-        return score
+    from providers import config
+    from providers.rerank import score
+
+    config.dashscope_key()   # 缺 key 立即抛出可操作的报错
+    return score
 
 
 def _rrf(*rankings: List[int]) -> dict[int, float]:

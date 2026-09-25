@@ -13,7 +13,7 @@ PDF ──► Markdown ──► 切块 ──► 混合索引 ──► CRAG �
 |---|---|---|
 | `doc_parsing/` | PDF 转 Markdown、清洗、结构化切块 | [README](doc_parsing/README.md) |
 | `retrieval/` | Qwen3 嵌入 + BM25 混合召回 + 重排 | [README](retrieval/README.md) |
-| `providers/` | 外部 API（百炼嵌入、重排、对话） | [README](providers/README.md) |
+| `providers/` | 外部 API（百炼重排、对话） | [README](providers/README.md) |
 | `rag/` | CRAG 状态机 | [README](rag/README.md) |
 
 ## 🚀 快速开始

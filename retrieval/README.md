@@ -8,7 +8,8 @@
            └─→ jieba + BM25 ───→ bm25.pkl ─────┘
 ```
 
-嵌入跑在本地，重排默认走百炼 API（比本地快 4 倍），缺 key 时自动退回本地模型。
+嵌入跑在本地，重排走百炼 API（比本地快 4 倍）。缺 key 时直接报错——两个模型的
+打分量纲差一个量级，不做静默退回；需要本地重排请显式传入（见下）。
 
 ## 🚀 使用
 
@@ -80,7 +81,7 @@ score(d) = Σ 1 / (60 + rank_i(d))
 |---|---|---|---|
 | 嵌入 | `Qwen3-Embedding-0.6B` | 本地 | 1024 维 / 32k 上下文，fp16 约 1.2 GB |
 | 重排 | `qwen3.7-text-rerank` | 百炼 API | 默认 |
-| 重排（备用） | `Qwen3-Reranker-0.6B` | 本地 | 缺 key 时自动启用 |
+| 重排（可选） | `Qwen3-Reranker-0.6B` | 本地 | 需显式传入 reranker |
 
 重排换成 API 是因为它快 4 倍（单次检索 1.54s vs 6.23s）且省 1.2GB 内存，
 细节见 [providers/README](../providers/README.md)。
